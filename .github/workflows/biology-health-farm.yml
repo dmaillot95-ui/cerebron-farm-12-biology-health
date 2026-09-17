@@ -18,27 +18,7 @@ jobs:
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           roles=[
-            ['BIOLOGY_GENERALIST','llama','huggingface-projects/llama-3.2-3B-Instruct','integrate biological mechanisms conservatively'],
-            ['CELL_BIOLOGIST','gemma','huggingface-projects/gemma-2-9b-it','cellular mechanisms and limits'],
-            ['MOLECULAR_BIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','molecular pathways and causal claims'],
-            ['GENETICIST','gemma','huggingface-projects/gemma-2-9b-it','genetic evidence and inheritance'],
-            ['PHYSIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','organ and systems physiology'],
-            ['NEUROSCIENCE_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','neuroscience evidence without mental-state speculation'],
-            ['MICROBIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','microbiology and host-microbe evidence'],
-            ['IMMUNOLOGY_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','immune mechanisms and evidence quality'],
-            ['EPIDEMIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','population evidence, confounding and causal limits'],
-            ['BIOSTATISTICIAN','gemma','huggingface-projects/gemma-2-9b-it','study statistics, uncertainty and effect sizes'],
-            ['CLINICAL_EVIDENCE_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','trial design, bias, endpoints and evidence hierarchy'],
-            ['PHARMACOLOGY_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','pharmacology mechanisms and safety evidence'],
-            ['NUTRITION_EVIDENCE_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','nutrition evidence and confounding'],
-            ['BIOINFORMATICS_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','bioinformatics pipelines and reproducibility'],
-            ['BIOMEDICAL_SAFETY_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','identify safety and translation risks'],
-            ['CAUSALITY_AUDITOR','gemma','huggingface-projects/gemma-2-9b-it','attack correlation-to-causation errors'],
-            ['REPLICATION_SPECIALIST','llama','huggingface-projects/llama-3.2-3B-Instruct','independent reconstruction and replication plan'],
-            ['FALSIFIER','gemma','huggingface-projects/gemma-2-9b-it','design decisive falsification checks'],
-            ['SYNTHESIZER','llama','huggingface-projects/llama-3.2-3B-Instruct','merge only mutually compatible evidence'],
-            ['JUDGE','gemma','huggingface-projects/gemma-2-9b-it','classify ESTABLISHED/SUPPORTED/UNCERTAIN/SPECULATIVE']
-          ]
+            ['BIOLOGY_GENERALIST','llama','huggingface-projects/llama-3.2-3B-Instruct','integrate biological mechanisms conservatively'],['CELL_BIOLOGIST','gemma','huggingface-projects/gemma-2-9b-it','cellular mechanisms and limits'],['MOLECULAR_BIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','molecular pathways and causal claims'],['GENETICIST','gemma','huggingface-projects/gemma-2-9b-it','genetic evidence and inheritance'],['PHYSIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','organ and systems physiology'],['NEUROSCIENCE_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','neuroscience evidence without mental-state speculation'],['MICROBIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','microbiology and host-microbe evidence'],['IMMUNOLOGY_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','immune mechanisms and evidence quality'],['EPIDEMIOLOGIST','llama','huggingface-projects/llama-3.2-3B-Instruct','population evidence, confounding and causal limits'],['BIOSTATISTICIAN','gemma','huggingface-projects/gemma-2-9b-it','study statistics, uncertainty and effect sizes'],['CLINICAL_EVIDENCE_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','trial design, bias, endpoints and evidence hierarchy'],['PHARMACOLOGY_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','pharmacology mechanisms and safety evidence'],['NUTRITION_EVIDENCE_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','nutrition evidence and confounding'],['BIOINFORMATICS_SPECIALIST','gemma','huggingface-projects/gemma-2-9b-it','bioinformatics pipelines and reproducibility'],['BIOMEDICAL_SAFETY_AUDITOR','llama','huggingface-projects/llama-3.2-3B-Instruct','identify safety and translation risks'],['CAUSALITY_AUDITOR','gemma','huggingface-projects/gemma-2-9b-it','attack correlation-to-causation errors'],['REPLICATION_SPECIALIST','llama','huggingface-projects/llama-3.2-3B-Instruct','independent reconstruction and replication plan'],['FALSIFIER','gemma','huggingface-projects/gemma-2-9b-it','design decisive falsification checks'],['SYNTHESIZER','llama','huggingface-projects/llama-3.2-3B-Instruct','merge only mutually compatible evidence'],['JUDGE','gemma','huggingface-projects/gemma-2-9b-it','classify ESTABLISHED/SUPPORTED/UNCERTAIN/SPECULATIVE']]
           print('matrix='+json.dumps({'include':[{'role':r,'family':f,'model':m,'task':t} for r,f,m,t in roles]}))
           PY
 
@@ -54,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install --quiet gradio_client
+      - run: pip install --quiet hf-gradio
       - name: Execute biology health agent
         env:
           ROLE: ${{ matrix.role }}
@@ -63,6 +43,7 @@ jobs:
           OUT: out
         run: python scripts/biology_health_agent.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: role-${{ matrix.role }}
           path: out/*.json
@@ -79,20 +60,12 @@ jobs:
         run: |
           python - <<'PY'
           import json, pathlib
-          files=list(pathlib.Path('artifacts').rglob('*.json'))
           rows=[]
-          for f in files:
+          for f in pathlib.Path('artifacts').rglob('*.json'):
             try: rows.append(json.loads(f.read_text()))
             except: pass
           success=[r for r in rows if r.get('status')=='success']
-          packet={
-            'farm':'12-biology-health',
-            'attempted_roles':len(rows),
-            'successful_external_ai_calls':len(success),
-            'successful_roles':[r.get('role') for r in success],
-            'model_families':sorted(set(r.get('model','') for r in success)),
-            'status':'UNREVIEWED_EXTERNAL_AGENT_OUTPUT'
-          }
+          packet={'farm':'12-biology-health','attempted_roles':len(rows),'successful_external_ai_calls':len(success),'failed_external_ai_calls':len(rows)-len(success),'successful_roles':[r.get('role') for r in success],'model_families':sorted(set(r.get('model','') for r in success)),'status':'UNREVIEWED_EXTERNAL_AGENT_OUTPUT' if success else 'EXTERNAL_INFERENCE_FAILED'}
           pathlib.Path('omega').mkdir(exist_ok=True)
           pathlib.Path('omega/packet.json').write_text(json.dumps(packet,indent=2))
           print(json.dumps(packet,indent=2))
